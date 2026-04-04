@@ -1,0 +1,22 @@
+OrdererOrgs:
+  - Name: Orderer
+    Domain: carchain.com
+    Specs:
+      - Hostname: orderer
+
+PeerOrgs:
+  - Name: Govt
+    Domain: govt.carchain.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1
+
+  - Name: Users
+    Domain: users.carchain.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1

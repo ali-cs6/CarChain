@@ -1,0 +1,20 @@
+# Crypto material, contains private keys
+organizations/ordererOrganizations/
+organizations/peerOrganizations/
+
+# Keep the organizations folder itself but ignore crypto
+# (we keep crypto-config.yaml since it's just a blueprint, not keys)
+
+# Docker volumes and ledger data
+production/
+
+# Node.js (for later when chaincode is written)
+node_modules/
+npm-debug.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env

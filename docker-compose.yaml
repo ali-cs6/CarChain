@@ -1,0 +1,69 @@
+networks:
+  carchain:
+
+services:
+
+  orderer.carchain.com:
+    container_name: orderer.carchain.com
+    image: hyperledger/fabric-orderer:3.1
+    environment:
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:9443
+      - ORDERER_ADMIN_TLS_ENABLED=false
+      - ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED=false
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    volumes:
+      - ./organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/msp:/var/hyperledger/orderer/msp
+      - ./organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/tls:/var/hyperledger/orderer/tls
+    ports:
+      - 7050:7050
+      - 9443:9443
+    networks:
+      - carchain
+
+
+  peer0.govt.carchain.com:
+    container_name: peer0.govt.carchain.com
+    image: hyperledger/fabric-peer:3.1
+    environment:
+      - CORE_PEER_ID=peer0.govt.carchain.com
+      - CORE_PEER_LOCALMSPID=GovtMSP
+      - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/peer/msp
+      - CORE_PEER_ADDRESS=peer0.govt.carchain.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+    volumes:
+      - ./organizations/peerOrganizations/govt.carchain.com/peers/peer0.govt.carchain.com/msp:/var/hyperledger/peer/msp
+      - ./organizations/peerOrganizations/govt.carchain.com/peers/peer0.govt.carchain.com/tls:/var/hyperledger/peer/tls
+    ports:
+      - 7051:7051
+    networks:
+      - carchain
+
+
+  peer0.users.carchain.com:
+    container_name: peer0.users.carchain.com
+    image: hyperledger/fabric-peer:3.1
+    environment:
+      - CORE_PEER_ID=peer0.users.carchain.com
+      - CORE_PEER_LOCALMSPID=UsersMSP
+      - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/peer/msp
+      - CORE_PEER_ADDRESS=peer0.users.carchain.com:9051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
+    volumes:
+      - ./organizations/peerOrganizations/users.carchain.com/peers/peer0.users.carchain.com/msp:/var/hyperledger/peer/msp
+      - ./organizations/peerOrganizations/users.carchain.com/peers/peer0.users.carchain.com/tls:/var/hyperledger/peer/tls
+    ports:
+      - 9051:9051
+    networks:
+      - carchain
