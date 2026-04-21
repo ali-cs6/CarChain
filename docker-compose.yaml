@@ -5,17 +5,14 @@ services:
 
   orderer.carchain.com:
     container_name: orderer.carchain.com
-    image: hyperledger/fabric-orderer:3.1
+    image: hyperledger/fabric-orderer:2.5
     environment:
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LISTENPORT=7050
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
-      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
-      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
-      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:9443
-      - ORDERER_ADMIN_TLS_ENABLED=false
-      - ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED=false
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=file
+      - ORDERER_GENERAL_BOOTSTRAPFILE=/var/hyperledger/orderer/genesis.block
       - ORDERER_GENERAL_TLS_ENABLED=true
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
@@ -26,16 +23,16 @@ services:
     volumes:
       - ./organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/msp:/var/hyperledger/orderer/msp
       - ./organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/tls:/var/hyperledger/orderer/tls
+      - ./channel-artifacts/genesis.block:/var/hyperledger/orderer/genesis.block
     ports:
       - 7050:7050
-      - 9443:9443
     networks:
       - carchain
 
 
   peer0.govt.carchain.com:
     container_name: peer0.govt.carchain.com
-    image: hyperledger/fabric-peer:3.1
+    image: hyperledger/fabric-peer:2.5
     environment:
       - CORE_PEER_ID=peer0.govt.carchain.com
       - CORE_PEER_LOCALMSPID=GovtMSP
@@ -53,7 +50,7 @@ services:
 
   peer0.users.carchain.com:
     container_name: peer0.users.carchain.com
-    image: hyperledger/fabric-peer:3.1
+    image: hyperledger/fabric-peer:2.5
     environment:
       - CORE_PEER_ID=peer0.users.carchain.com
       - CORE_PEER_LOCALMSPID=UsersMSP

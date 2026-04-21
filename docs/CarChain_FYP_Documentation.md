@@ -1,11 +1,11 @@
 # CarChain — Hyperledger Fabric FYP Documentation
 
-**Author:** Barkat Ali  
-**Project:** CarChain — Blockchain Vehicle Management System  
-**Platform:** Hyperledger Fabric v3.1.x  
-**Chaincode Language:** JavaScript (Node.js)  
-**OS:** Ubuntu Linux  
-**Last Updated:** March 2026  
+**Author:** Barkat Ali
+**Project:** CarChain — Blockchain Vehicle Management System
+**Platform:** Hyperledger Fabric v2.5.0
+**Chaincode Language:** JavaScript (Node.js)
+**OS:** Ubuntu Linux
+**Last Updated:** April 2026
 
 ---
 
@@ -34,6 +34,12 @@ CarChain is a permissioned blockchain-based vehicle management system built on H
 /home/ali/Documents/carChain/carchain-network/
 ```
 
+## GitHub Repository
+
+```
+https://github.com/ali-cs6/CarChain
+```
+
 ---
 
 # Key Concepts Glossary
@@ -48,13 +54,17 @@ Understanding these terms is essential for Fabric development and job interviews
 
 **Genesis Block** — The very first block of a channel. It contains the entire channel configuration baked in — organizations, policies, orderer settings. Every node reads this when joining.
 
+**System Channel** — In Fabric v2.x, the orderer bootstraps using a system channel genesis block. This defines the orderer's own configuration before any application channels exist.
+
+**Application Channel** — The actual channel where peers transact. In CarChain this is `carchainchannel`. Created after the orderer is running using `peer channel create`.
+
 **Chaincode** — Smart contracts in Fabric. Written in Go, Java, or JavaScript. Contains business logic like registerVehicle() and transferOwnership().
 
 **Endorsement Policy** — Rules defining whose signature is required for a transaction to be valid. Example: "MAJORITY of orgs must endorse."
 
-**Chaincode Lifecycle** — The multi-step process to deploy chaincode in Fabric v2+: Package → Install on peers → Approve by each org → Commit to channel. Every org must approve before chaincode goes live.
+**Chaincode Lifecycle (v2.x)** — The multi-step process to deploy chaincode: Package → Install on peers → Approve by each org → Commit to channel. Every org must approve before chaincode goes live.
 
-**Channel Participation API** — The modern Fabric v3.x method of joining a channel. Instead of bootstrapping the orderer with a genesis file, the orderer starts clean and channels are added dynamically using the osnadmin tool.
+**FABRIC_CFG_PATH** — Environment variable that tells the peer binary where to find `core.yaml` — its main configuration file. Must be set before running any `peer` commands.
 
 ---
 
@@ -83,7 +93,7 @@ sudo usermod -aG docker $USER
 
 ## Docker Compose v2 Plugin
 
-The modern Docker Compose v2 plugin is required. Fabric v3.x scripts use `docker compose` (with a space), not the old `docker-compose` (with a dash).
+The modern Docker Compose v2 plugin is required. Fabric scripts use `docker compose` (with a space), not the old `docker-compose` (with a dash).
 
 ```bash
 # Add Docker's official repository
@@ -114,49 +124,60 @@ go version
 
 # Phase 1 — Hyperledger Fabric Installation
 
-Downloaded Fabric binaries and Docker images using the official Fabric bootstrap script.
+## Final Decision — Fabric v2.5.0
+
+After initially attempting Fabric v3.1.x, the project was migrated to **Fabric v2.5.0** for the following reasons:
+
+- Fabric v3.x removed the system channel and genesis block bootstrap method entirely
+- The `osnadmin` Channel Participation API (v3.x method) requires perfectly matched binaries and Docker images — any version mismatch causes silent failures
+- Fabric v2.5 is an LTS (Long Term Support) release, stable, well documented, and widely used in industry
+- v2.5 uses the proven genesis block bootstrap approach which is reliable and well understood
+
+> **For career purposes:** Understanding v2.5 is still highly relevant in industry. The core concepts — MSP, channels, chaincode lifecycle, endorsement — are identical across versions.
+
+## Download Fabric v2.5.0
 
 ```bash
-curl -sSL https://bit.ly/2ysbOFE | bash -s
+cd /home/ali/Documents/carChain
+curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.5.0 1.5.7
 ```
 
-This installed:
-- Fabric binaries (`cryptogen`, `configtxgen`, `peer`, `orderer`, `osnadmin`)
-- Fabric Docker images
-- fabric-samples directory
+This downloads:
+- Fabric v2.5.0 binaries into `fabric-samples/bin/`
+- Fabric CA v1.5.7
+- All matching Docker images tagged `2.5`
 
-**Fabric version installed: v3.1.1**
+## Set PATH Permanently
 
-Binaries located at:
-```
-/home/ali/Documents/carChain/fabric-samples/bin/
-```
-
-Added to PATH:
 ```bash
-export PATH=$PATH:/home/ali/Documents/carChain/fabric-samples/bin
+nano ~/.bashrc
+# Add this line at the bottom:
+export PATH=/home/ali/Documents/carChain/fabric-samples/bin:$PATH
+
+source ~/.bashrc
 ```
 
-Verification:
+## Verification
+
 ```bash
-cryptogen version   # v3.1.1
-configtxgen --version  # v3.1.1
+peer version          # v2.5.0
+configtxgen --version # v2.5.0
+cryptogen version     # v2.5.0
 ```
 
 ---
 
 # Phase 2 — Environment Verification (Test Network)
 
-Before building CarChain, the Fabric environment was verified using the built-in sample test network. This is standard practice for every Fabric developer.
+Before building CarChain, the Fabric environment was verified using the built-in sample test network.
 
 ```bash
 cd /home/ali/Documents/carChain/fabric-samples/test-network
 ./network.sh up
 docker ps
-# Expected: orderer, peer0.org1, peer0.org2, CA containers
 ```
 
-Sample chaincode was also deployed to verify the full chaincode lifecycle works:
+Sample chaincode deployed to verify full lifecycle:
 
 ```bash
 ./network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go -ccl go
@@ -168,7 +189,7 @@ Chaincode lifecycle verified:
 - Approval ✅
 - Commit ✅
 
-Test network was then shut down before starting the real project:
+Test network shut down before starting real project:
 
 ```bash
 ./network.sh down
@@ -185,36 +206,34 @@ A fresh project directory was created, completely separate from fabric-samples.
 /home/ali/Documents/carChain/carchain-network/
 ```
 
-Directory structure created:
+Directory structure:
 ```
 carchain-network/
-├── organizations/       ← crypto material and MSP identities
+├── organizations/       ← crypto material and MSP identities (not pushed to GitHub)
 ├── channel-artifacts/   ← genesis block and channel files
 ├── configtx/            ← network configuration files
-└── chaincode/           ← smart contracts (JavaScript)
+├── chaincode/           ← smart contracts (JavaScript)
+├── crypto-config.yaml   ← org identity blueprint
+├── docker-compose.yaml  ← container definitions
+├── .gitignore           ← excludes private keys from git
+└── README.md            ← project homepage on GitHub
 ```
 
 ### Directory Roles
 
-**`organizations/`**
-Contains all cryptographic material generated by `cryptogen`. Every peer, orderer, and admin has a folder here with their certificates (who they are), private keys (their digital signature), and TLS certificates (for encrypted communication).
+**`organizations/`** — All cryptographic material generated by `cryptogen`. Every peer, orderer, and admin has a folder here with their certificates, private keys, and TLS certificates. Never pushed to GitHub.
 
-**`channel-artifacts/`**
-Contains the genesis block and any channel transaction files generated by `configtxgen`. The genesis block is the foundation of the entire channel.
+**`channel-artifacts/`** — Contains the system channel genesis block (`genesis.block`), the channel transaction (`carchain.tx`), and the application channel block (`carchainchannel.block`).
 
-**`configtx/`**
-Contains `configtx.yaml` — the constitution of the blockchain network. Defines organizations, policies, orderer settings, and channel profiles.
+**`configtx/`** — Contains `configtx.yaml` — the constitution of the blockchain network. Defines organizations, policies, orderer settings, and channel profiles.
 
-**`chaincode/`**
-Will contain CarChain smart contracts written in JavaScript. Functions will include `registerVehicle()`, `transferOwnership()`, `verifyVehicle()`, and `getVehicleHistory()`.
+**`chaincode/`** — Will contain CarChain smart contracts written in JavaScript.
 
 ---
 
 # Phase 4 — Cryptographic Identity Generation
 
 ## crypto-config.yaml
-
-Defines the organizations for which `cryptogen` will generate identities.
 
 File location: `/home/ali/Documents/carChain/carchain-network/crypto-config.yaml`
 
@@ -243,7 +262,7 @@ PeerOrgs:
       Count: 1
 ```
 
-**`EnableNodeOUs: true`** — Enables Node Organization Units, which allows Fabric to distinguish between peer identities, admin identities, and client identities within the same org. Required for modern endorsement policies.
+**`EnableNodeOUs: true`** — Allows Fabric to distinguish between peer, admin, and client identities within the same org. Required for endorsement policies.
 
 ## Generate Identities
 
@@ -259,26 +278,24 @@ organizations/
 ├── ordererOrganizations/
 │   └── carchain.com/
 │       ├── msp/
-│       ├── orderers/orderer.carchain.com/
-│       │   ├── msp/
-│       │   └── tls/         ← server.crt, server.key, ca.crt
-│       └── users/Admin@carchain.com/
+│       ├── tlsca/
+│       └── orderers/orderer.carchain.com/
+│           ├── msp/
+│           └── tls/         ← server.crt, server.key, ca.crt
 └── peerOrganizations/
     ├── govt.carchain.com/
     │   ├── msp/
+    │   ├── tlsca/
     │   ├── peers/peer0.govt.carchain.com/
-    │   │   ├── msp/
-    │   │   └── tls/
-    │   └── users/
+    │   └── users/Admin@govt.carchain.com/
     └── users.carchain.com/
         ├── msp/
+        ├── tlsca/
         ├── peers/peer0.users.carchain.com/
-        │   ├── msp/
-        │   └── tls/
-        └── users/
+        └── users/Admin@users.carchain.com/
 ```
 
-> **Do not modify anything in this folder.** These are the cryptographic identities of the entire network.
+> **Do not modify anything in this folder.** These are the cryptographic identities of the entire network. Regenerate with cryptogen if needed.
 
 ---
 
@@ -286,11 +303,11 @@ organizations/
 
 ## What is configtx.yaml?
 
-This file is the governance document of the CarChain blockchain. It defines every rule, every organization, every policy. `configtxgen` reads this file to produce the channel genesis block.
+The governance document of the CarChain blockchain. It defines every rule, every organization, every policy. `configtxgen` reads this file to produce the genesis block and channel transaction.
 
 File location: `/home/ali/Documents/carChain/carchain-network/configtx/configtx.yaml`
 
-## Final Working Configuration
+## Final Working Configuration (v2.5)
 
 ```yaml
 Organizations:
@@ -356,13 +373,14 @@ Organizations:
 
 Capabilities:
     Channel: &ChannelCapabilities
-        V3_0: true
+        V2_0: true
     Orderer: &OrdererCapabilities
-        V3_0: true
+        V2_0: true
     Application: &ApplicationCapabilities
-        V3_0: true
+        V2_0: true
 
 Application: &ApplicationDefaults
+    Organizations:
     Policies:
         Readers:
             Type: ImplicitMeta
@@ -387,6 +405,11 @@ Orderer: &OrdererDefaults
               Port: 7050
               ClientTLSCert: ../organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/tls/server.crt
               ServerTLSCert: ../organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/tls/server.crt
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
     Policies:
         Readers:
             Type: ImplicitMeta
@@ -419,12 +442,21 @@ Channel: &ChannelDefaults
 
 Profiles:
 
-    CarChainChannel:
+    CarChainGenesis:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
             Organizations:
                 - *OrdererOrg
+        Consortiums:
+            CarChainConsortium:
+                Organizations:
+                    - *GovtOrg
+                    - *UsersOrg
+
+    CarChainChannel:
+        Consortium: CarChainConsortium
+        <<: *ChannelDefaults
         Application:
             <<: *ApplicationDefaults
             Organizations:
@@ -432,54 +464,51 @@ Profiles:
                 - *UsersOrg
 ```
 
-> **Important note for Fabric v3.x:** There is no `CarChainGenesis` profile and no `Consortiums` section. The old system channel concept was completely removed in Fabric v3.x. There is only one profile — the application channel profile.
+> **Key difference from v3.x:** Two profiles are required in v2.5. `CarChainGenesis` creates the system channel genesis block that bootstraps the orderer. `CarChainChannel` creates the application channel transaction that peers use to join.
 
 ---
 
-# Phase 6 — Genesis Block Generation
+# Phase 6 — Channel Artifacts Generation
 
-## What is the genesis block?
+## Generate System Channel Genesis Block
 
-The genesis block is the very first block of the CarChain channel. It contains the entire channel constitution (from configtx.yaml) baked into binary format. Every node that joins the channel reads this block first to understand who the members are and what the rules are.
-
-## Command
+The orderer reads this block at startup to initialize itself.
 
 ```bash
 cd /home/ali/Documents/carChain/carchain-network
 
 configtxgen \
+  -profile CarChainGenesis \
+  -channelID system-channel \
+  -outputBlock ./channel-artifacts/genesis.block \
+  -configPath ./configtx
+```
+
+## Generate Application Channel Transaction
+
+Used by `peer channel create` to create the `carchainchannel` channel.
+
+```bash
+configtxgen \
   -profile CarChainChannel \
-  -outputBlock ./channel-artifacts/carchain-genesis.block \
+  -outputCreateChannelTx ./channel-artifacts/carchain.tx \
   -channelID carchainchannel \
   -configPath ./configtx
 ```
 
-## Expected Output
+## channel-artifacts/ contents after generation
 
 ```
-INFO Loading configuration
-INFO Generating genesis block
-INFO Creating application channel genesis block
-INFO Writing genesis block
+channel-artifacts/
+├── genesis.block       ← system channel, read by orderer at startup
+└── carchain.tx         ← used to create the application channel
 ```
-
-## Troubleshooting Encountered
-
-**Error 1:** `no policies defined`
-- Cause: configtx.yaml was missing policy sections
-- Fix: Added Readers/Writers/Admins policies to all sections
-
-**Error 2:** `consenter info did not specify client TLS cert`
-- Cause: Fabric v3.x requires TLS cert paths in the EtcdRaft consenter block even when running without TLS on peers
-- Fix: Added `ClientTLSCert` and `ServerTLSCert` paths pointing to the orderer's generated TLS certs
-
-**Result:** `carchain-genesis.block` successfully created in `channel-artifacts/`
 
 ---
 
 # Phase 7 — Docker Network Setup
 
-## docker-compose.yaml
+## docker-compose.yaml (v2.5 Final)
 
 File location: `/home/ali/Documents/carChain/carchain-network/docker-compose.yaml`
 
@@ -491,17 +520,14 @@ services:
 
   orderer.carchain.com:
     container_name: orderer.carchain.com
-    image: hyperledger/fabric-orderer:3.1
+    image: hyperledger/fabric-orderer:2.5
     environment:
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LISTENPORT=7050
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
-      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
-      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
-      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:9443
-      - ORDERER_ADMIN_TLS_ENABLED=false
-      - ORDERER_ADMIN_TLS_CLIENTAUTHREQUIRED=false
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=file
+      - ORDERER_GENERAL_BOOTSTRAPFILE=/var/hyperledger/orderer/genesis.block
       - ORDERER_GENERAL_TLS_ENABLED=true
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
@@ -512,21 +538,25 @@ services:
     volumes:
       - ./organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/msp:/var/hyperledger/orderer/msp
       - ./organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/tls:/var/hyperledger/orderer/tls
+      - ./channel-artifacts/genesis.block:/var/hyperledger/orderer/genesis.block
     ports:
       - 7050:7050
-      - 9443:9443
     networks:
       - carchain
 
   peer0.govt.carchain.com:
     container_name: peer0.govt.carchain.com
-    image: hyperledger/fabric-peer:3.1
+    image: hyperledger/fabric-peer:2.5
     environment:
       - CORE_PEER_ID=peer0.govt.carchain.com
       - CORE_PEER_LOCALMSPID=GovtMSP
       - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/peer/msp
       - CORE_PEER_ADDRESS=peer0.govt.carchain.com:7051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/peer/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/peer/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/peer/tls/ca.crt
     volumes:
       - ./organizations/peerOrganizations/govt.carchain.com/peers/peer0.govt.carchain.com/msp:/var/hyperledger/peer/msp
       - ./organizations/peerOrganizations/govt.carchain.com/peers/peer0.govt.carchain.com/tls:/var/hyperledger/peer/tls
@@ -537,13 +567,17 @@ services:
 
   peer0.users.carchain.com:
     container_name: peer0.users.carchain.com
-    image: hyperledger/fabric-peer:3.1
+    image: hyperledger/fabric-peer:2.5
     environment:
       - CORE_PEER_ID=peer0.users.carchain.com
       - CORE_PEER_LOCALMSPID=UsersMSP
       - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/peer/msp
       - CORE_PEER_ADDRESS=peer0.users.carchain.com:9051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/peer/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/peer/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/peer/tls/ca.crt
     volumes:
       - ./organizations/peerOrganizations/users.carchain.com/peers/peer0.users.carchain.com/msp:/var/hyperledger/peer/msp
       - ./organizations/peerOrganizations/users.carchain.com/peers/peer0.users.carchain.com/tls:/var/hyperledger/peer/tls
@@ -555,25 +589,13 @@ services:
 
 ## Key Configuration Decisions Explained
 
-**`BOOTSTRAPMETHOD=none`** — Fabric v3.x does not allow bootstrapping the orderer from a genesis file. The orderer starts with no channel and channels are added dynamically using osnadmin.
+**`BOOTSTRAPMETHOD=file`** — In Fabric v2.5 the orderer reads the system channel genesis block at startup. This is the stable, proven bootstrap method.
 
-**`CHANNELPARTICIPATION_ENABLED=true`** — Enables the Channel Participation API, which is the v3.x mechanism for joining channels.
+**`BOOTSTRAPFILE`** — Points to `genesis.block` mounted into the container. This is what the orderer reads to initialize the system channel.
 
-**`ORDERER_GENERAL_TLS_ENABLED=true`** — TLS is mandatory for etcdraft consensus nodes. The orderer will refuse to start without it. TLS certificates were already generated by cryptogen.
+**`ORDERER_GENERAL_TLS_ENABLED=true`** — TLS is mandatory for etcdraft consensus. The orderer refuses to start without it.
 
-**`ORDERER_ADMIN_TLS_ENABLED=false`** — The admin port (9443) used by osnadmin does not require TLS in our setup, simplifying the channel join commands.
-
-**Port 9443** — The orderer admin port. This is where osnadmin sends the channel genesis block to activate the channel.
-
-## Troubleshooting Encountered
-
-**Error 1:** `Bootstrap method: 'file' is forbidden`
-- Cause: Old configtx had system channel approach, docker-compose had BOOTSTRAPMETHOD=file
-- Fix: Set BOOTSTRAPMETHOD=none, enabled Channel Participation API
-
-**Error 2:** `TLS is required for running ordering nodes of cluster type`
-- Cause: etcdraft is a cluster consensus — TLS is non-negotiable
-- Fix: Enabled ORDERER_GENERAL_TLS with cert paths from cryptogen output
+**`CORE_PEER_TLS_ENABLED=true`** — Peers also need TLS enabled so they can communicate securely with the orderer and each other.
 
 ## Starting the Network
 
@@ -587,19 +609,114 @@ docker ps
 
 | Container | Image | Port |
 |---|---|---|
-| orderer.carchain.com | fabric-orderer:3.1 | 7050, 9443 |
-| peer0.govt.carchain.com | fabric-peer:3.1 | 7051 |
-| peer0.users.carchain.com | fabric-peer:3.1 | 9051 |
+| orderer.carchain.com | fabric-orderer:2.5 | 7050 |
+| peer0.govt.carchain.com | fabric-peer:2.5 | 7051 |
+| peer0.users.carchain.com | fabric-peer:2.5 | 9051 |
 
 All three containers running successfully. ✅
 
 Orderer log confirmed:
 ```
-Starting orderer with TLS enabled
-Channel Participation API enabled
-Starting without a system channel
+Version: v2.5.0
+Starting system channel 'system-channel'
+1 became leader at term 3
 Beginning to serve requests
+Start accepting requests as Raft leader
 ```
+
+---
+
+# Phase 8 — GitHub Repository Setup
+
+## .gitignore
+
+Critical — prevents private keys from being pushed to GitHub.
+
+```
+organizations/ordererOrganizations/
+organizations/peerOrganizations/
+production/
+node_modules/
+npm-debug.log
+.DS_Store
+.env
+```
+
+> **Lesson learned:** The organizations/ folder was accidentally pushed in an early commit exposing private keys publicly. It was immediately removed using `git rm -r --cached` and crypto material was regenerated. Always set up `.gitignore` before the first commit.
+
+## Git Setup and Push
+
+```bash
+git config --global user.name "Barkat Ali"
+git config --global user.email "your@email.com"
+
+cd /home/ali/Documents/carChain/carchain-network
+git init
+git add .
+git status   # verify no crypto material is tracked
+git commit -m "Initial commit — CarChain Fabric v2.5 network setup"
+git remote add origin https://github.com/ali-cs6/CarChain.git
+git branch -M main
+git push -u origin main
+```
+
+> **GitHub authentication:** GitHub requires a Personal Access Token instead of a password. Generate one at GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic). Check the `repo` scope.
+
+## Repository Structure on GitHub
+
+```
+https://github.com/ali-cs6/CarChain
+├── channel-artifacts/
+├── configtx/
+├── docs/
+│   └── CarChain_FYP_Documentation.md
+├── .gitignore
+├── README.md
+├── crypto-config.yaml
+└── docker-compose.yaml
+```
+
+## Updating GitHub After Each Session
+
+```bash
+git add .
+git commit -m "describe what was done"
+git push
+```
+
+---
+
+# Phase 9 — Channel Creation (In Progress)
+
+## Required Environment Variables
+
+Before running any `peer` command these must be set. The peer binary needs `FABRIC_CFG_PATH` to find its `core.yaml` config file.
+
+```bash
+export FABRIC_CFG_PATH=/home/ali/Documents/carChain/fabric-samples/config
+
+export CORE_PEER_LOCALMSPID=GovtMSP
+export CORE_PEER_MSPCONFIGPATH=/home/ali/Documents/carChain/carchain-network/organizations/peerOrganizations/govt.carchain.com/users/Admin@govt.carchain.com/msp
+export CORE_PEER_ADDRESS=localhost:7051
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_TLS_ROOTCERT_FILE=/home/ali/Documents/carChain/carchain-network/organizations/peerOrganizations/govt.carchain.com/tlsca/tlsca.govt.carchain.com-cert.pem
+```
+
+## Create the Application Channel
+
+```bash
+cd /home/ali/Documents/carChain/carchain-network
+
+peer channel create \
+  -o localhost:7050 \
+  -c carchainchannel \
+  -f ./channel-artifacts/carchain.tx \
+  --outputBlock ./channel-artifacts/carchainchannel.block \
+  --tls \
+  --cafile ./organizations/ordererOrganizations/carchain.com/tlsca/tlsca.carchain.com-cert.pem
+```
+
+**Status: In progress** ⏳
 
 ---
 
@@ -610,23 +727,24 @@ Beginning to serve requests
 | Phase | Description |
 |---|---|
 | Environment Setup | Docker, Go, Docker Compose v2 |
-| Fabric Installation | v3.1.1 binaries and images |
+| Fabric Installation | v2.5.0 binaries and Docker images |
 | Test Network Verification | Full chaincode lifecycle tested |
 | Project Structure | carchain-network directory created |
 | Crypto Material | cryptogen generated all MSP identities |
-| configtx.yaml | Network constitution defined |
-| Genesis Block | carchain-genesis.block created |
-| Docker Compose | All three containers running |
+| configtx.yaml | Network constitution defined (v2.5) |
+| Genesis Block | genesis.block + carchain.tx generated |
+| Docker Compose | All three containers running on v2.5 |
+| GitHub Repository | Repo live at github.com/ali-cs6/CarChain |
 
 ## Pending ⏳
 
 | Phase | Description |
 |---|---|
-| Channel Activation | osnadmin channel join (orderer joins channel) |
+| Channel Creation | peer channel create — carchainchannel |
 | Peer Channel Join | Both peers join carchainchannel |
 | Chaincode Development | Write CarChain smart contracts in JavaScript |
-| Chaincode Deployment | Full lifecycle on the channel |
-| Application Layer | Node.js app connects via Fabric SDK |
+| Chaincode Deployment | Full lifecycle — install, approve, commit |
+| Application Layer | Node.js app connects via Fabric Gateway SDK |
 
 ---
 
@@ -635,15 +753,19 @@ Beginning to serve requests
 ```
 cryptogen          → generates org identities and TLS certs
       ↓
-configtxgen        → generates channel genesis block
+configtxgen        → generates genesis.block + carchain.tx
       ↓
 docker compose up  → starts orderer and peer containers
       ↓
-osnadmin           → orderer joins the channel (NEXT STEP)
+peer channel create → creates carchainchannel  ← NEXT STEP
       ↓
-peer channel join  → peers join the channel
+peer channel join  → both peers join the channel
       ↓
-chaincode install  → smart contracts deployed
+chaincode install  → smart contracts deployed on peers
+      ↓
+chaincode approve  → each org approves the chaincode
+      ↓
+chaincode commit   → chaincode goes live on channel
       ↓
 application        → Node.js app interacts with blockchain
 ```
@@ -680,11 +802,39 @@ docker logs orderer.carchain.com
 # Regenerate crypto material
 cryptogen generate --config=crypto-config.yaml --output=organizations
 
-# Regenerate genesis block
+# Regenerate genesis block (v2.5)
+configtxgen -profile CarChainGenesis \
+  -channelID system-channel \
+  -outputBlock ./channel-artifacts/genesis.block \
+  -configPath ./configtx
+
+# Regenerate channel transaction
 configtxgen -profile CarChainChannel \
-  -outputBlock ./channel-artifacts/carchain-genesis.block \
+  -outputCreateChannelTx ./channel-artifacts/carchain.tx \
   -channelID carchainchannel \
   -configPath ./configtx
+
+# Set peer environment (run before any peer command)
+export FABRIC_CFG_PATH=/home/ali/Documents/carChain/fabric-samples/config
+export CORE_PEER_LOCALMSPID=GovtMSP
+export CORE_PEER_MSPCONFIGPATH=/home/ali/Documents/carChain/carchain-network/organizations/peerOrganizations/govt.carchain.com/users/Admin@govt.carchain.com/msp
+export CORE_PEER_ADDRESS=localhost:7051
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_TLS_ROOTCERT_FILE=/home/ali/Documents/carChain/carchain-network/organizations/peerOrganizations/govt.carchain.com/tlsca/tlsca.govt.carchain.com-cert.pem
+
+# Create channel
+peer channel create \
+  -o localhost:7050 \
+  -c carchainchannel \
+  -f ./channel-artifacts/carchain.tx \
+  --outputBlock ./channel-artifacts/carchainchannel.block \
+  --tls \
+  --cafile ./organizations/ordererOrganizations/carchain.com/tlsca/tlsca.carchain.com-cert.pem
+
+# Push to GitHub
+git add .
+git commit -m "describe changes"
+git push
 ```
 
 ---

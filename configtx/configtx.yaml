@@ -62,14 +62,15 @@ Organizations:
 
 Capabilities:
     Channel: &ChannelCapabilities
-        V3_0: true
+        V2_0: true
     Orderer: &OrdererCapabilities
-        V3_0: true
+        V2_0: true
     Application: &ApplicationCapabilities
-        V3_0: true
+        V2_0: true
 
 
 Application: &ApplicationDefaults
+    Organizations:
     Policies:
         Readers:
             Type: ImplicitMeta
@@ -95,6 +96,11 @@ Orderer: &OrdererDefaults
               Port: 7050
               ClientTLSCert: ../organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/tls/server.crt
               ServerTLSCert: ../organizations/ordererOrganizations/carchain.com/orderers/orderer.carchain.com/tls/server.crt
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
     Policies:
         Readers:
             Type: ImplicitMeta
@@ -129,12 +135,21 @@ Channel: &ChannelDefaults
 
 Profiles:
 
-    CarChainChannel:
+    CarChainGenesis:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
             Organizations:
                 - *OrdererOrg
+        Consortiums:
+            CarChainConsortium:
+                Organizations:
+                    - *GovtOrg
+                    - *UsersOrg
+
+    CarChainChannel:
+        Consortium: CarChainConsortium
+        <<: *ChannelDefaults
         Application:
             <<: *ApplicationDefaults
             Organizations:
