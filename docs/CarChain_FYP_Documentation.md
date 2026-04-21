@@ -703,6 +703,7 @@ export CORE_PEER_TLS_ROOTCERT_FILE=/home/ali/Documents/carChain/carchain-network
 ```
 
 ## Create the Application Channel
+the channel was successfully created using GovtMSP admin identity, using the following command.
 
 ```bash
 cd /home/ali/Documents/carChain/carchain-network
@@ -716,7 +717,30 @@ peer channel create \
   --cafile ./organizations/ordererOrganizations/carchain.com/tlsca/tlsca.carchain.com-cert.pem
 ```
 
-**Status: In progress** ⏳
+## Peer channel join
+Both organizations joined the channel. During this phase, it was discovered that while the Orderer requires TLS, the Peers were successfully joined using non-TLS communication to simplify local development.
+
+### 1. GovtOrg join
+```bash
+export CORE_PEER_ADDRESS=localhost:7051
+export CORE_PEER_LOCALMSPID=GovtMSP
+export CORE_PEER_MSPCONFIGPATH=/home/ali/Documents/carChain/carchain-network/organizations/peerOrganizations/govt.carchain.com/users/Admin@govt.carchain.com/msp
+export CORE_PEER_TLS_ENABLED=false
+
+peer channel join -b ./channel-artifacts/carchainchannel.block
+```
+
+### UsersOrg join
+```bash
+export CORE_PEER_ADDRESS=localhost:9051
+export CORE_PEER_LOCALMSPID="UsersMSP"
+export CORE_PEER_MSPCONFIGPATH=/home/ali/Documents/carChain/carchain-network/organizations/peerOrganizations/users.carchain.com/users/Admin@users.carchain.com/msp
+export CORE_PEER_TLS_ENABLED=false
+
+peer channel join -b ./channel-artifacts/carchainchannel.block
+```
+
+while the Orderer (Consensus) uses TLS for secure block distribution, the Peer-to-CLI communication was set to plain-text to focus on debugging Chaincode logic in a local dev environment.
 
 ---
 
