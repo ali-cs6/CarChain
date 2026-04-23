@@ -113,30 +113,18 @@ class CarChain extends Contract {
     async getVehicleHistory(ctx, vehicleId) {
         const historyIterator = await ctx.stub.getHistoryForKey(vehicleId); //getHistoryForKey returns an iterator that allows us to traverse through all the historical transactions related to the given key (vehicleId in this case)
         const history = []; //array to hold the history records
-        let result;
 
-        do {
+        let result = await historyIterator.next();
+        while (!result.done) {
+            const record = {
+                txId: result.value.txId,
+                timestamp: result.value.timestamp,
+                isDelete: result.value.isDelete,
+                data: result.value.value.toString('utf8')
+            };
+            history.push(record);
             result = await historyIterator.next();
-                const record = {
-                    txId: result.value.txId,
-                    timestamp: result.value.timestamp,
-                    isDelete: result.value.isDelete,
-                    data: result.value.value.toString('utf8')
-                };
-                history.push(record);
-        } while (!result.done);
-
-        // let result = await historyIterator.next();
-        // while (!result.done) {
-        //     const record = {
-        //         txId: result.value.txId,
-        //         timestamp: result.value.timestamp,
-        //         isDelete: result.value.isDelete,
-        //         data: result.value.value.toString('utf8')
-        //     };
-        //     history.push(record);
-        //     result = await historyIterator.next();
-        // }
+        }
 
         await historyIterator.close();
         return JSON.stringify(history);
@@ -146,20 +134,13 @@ class CarChain extends Contract {
     async getAllVehicles(ctx) {
         const iterator = await ctx.stub.getStateByRange('', '');
         const vehicles = [];
-        let result;
 
-        do{
-            result = await iterator.next();
+        let result = await iterator.next();
+        while (!result.done) {
             const vehicle = JSON.parse(result.value.value.toString('utf8'));
             vehicles.push(vehicle);
-        }while(!result.done);
-
-        // let result = await iterator.next();
-        // while (!result.done) {
-        //     const vehicle = JSON.parse(result.value.value.toString('utf8'));
-        //     vehicles.push(vehicle);
-        //     result = await iterator.next();
-        // }
+            result = await iterator.next();
+        }
 
         await iterator.close();
         return JSON.stringify(vehicles);
